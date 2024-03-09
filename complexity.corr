@@ -1,0 +1,8 @@
+(record TM 'a 'b
+	(δ ('a × 'b → 'a)))
+
+(set NP-complete (x ∈ decision-problem)
+     (∀ (y ∈ decision-problem) (y ≤ₚ x))) ; same as relation ∀ x, (x ∈ decision-problem) ∧ (∀ y, (y ∈ decision-problem) ∧ (y ≤ₚ x))
+
+(theorem cook-levin (3SAT ∈ NP-complete)
+	 )

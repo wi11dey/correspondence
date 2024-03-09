@@ -1,0 +1,5 @@
+(definition quantifier-rank (x ∈ sentence)
+  (case x
+    (`(a ∧ b)
+     (min (quantifier-rank a)
+	  (quantifier-rank b)))))
