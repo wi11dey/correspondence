@@ -1,0 +1,13 @@
+(theorem associative-+ (a ∈ ℕ) (b ∈ ℕ) (c ∈ ℕ) → (a + (b + c) = (a + b) + c)
+	 (case c
+	   (0
+	    (have (a + (b + 0) = (a + b) + 0))
+	    (have (a + b = (a + b) + 0))
+	    (have (a + b = a + b)))
+	   (`(c' + 1 : (a + (b + c') = (a + b) + c') aka inductive-hypothesis)
+	    (have (a + (b + (c' + 1)) = (a + b) + (c' + 1)))
+	    (have (a + ((b + c') + 1) = (a + b) + (c' + 1)))
+	    (have (a + (b + c') + 1 = (a + b) + (c' + 1)))
+	    (have (a + (b + c') + 1 = ((a + b) + c') + 1))
+	    (substituting inductive-hypothesis
+			  have (((a + b) + c') + 1 = ((a + b) + c') + 1)))))
