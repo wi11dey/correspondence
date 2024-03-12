@@ -1,7 +1,8 @@
 (define-library (correspondence core)
-  (export Sentence? Formula?)
+  (export sentence?)
 
-  (define-record-type Sentence
-    )
-
+  (define-record-type sentence
+    (make-sentence content)
+    sentence?
+    (content sentence-content))
   )

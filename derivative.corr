@@ -1,0 +1,11 @@
+(record univariate-polynomial 'a
+	(coefficients (map ℕ 'a)))
+
+(definition constructively ∂ (p ∈ univariate-polynomial 'a) (x ∈ a) → ()
+  (let (δ )
+    (case (size p.coefficients)
+      (0
+       )
+      (1
+       )
+      ())))
