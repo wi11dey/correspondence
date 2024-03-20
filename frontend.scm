@@ -1,3 +1,5 @@
+(define (unify a b))
+
 (define (quantifier? x)
   (match x
     ((or 'forall '∀ 'exists '∃)
@@ -17,3 +19,15 @@
     ((complex ℂ) => complex?)
     ;; Dependent:
     (else => (const (matches type ('quote _))))))
+
+(define (declare in-theory)
+  (put in-theory))
+
+(define-syntax theorem
+  (syntax-rules ()
+    ))
+
+(define-syntax lemma
+  (syntax-rules ()
+    ((lemma . rest) (theorem . rest))))
+

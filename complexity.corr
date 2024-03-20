@@ -6,3 +6,27 @@
 
 (theorem cook-levin (3SAT ∈ NP-complete)
 	 )
+
+;; equivalent to
+(alias (decision-problem 'a) λ{input ∈ 'a})
+
+(definition NP-complete ∀{x ∈ (decision-problem 'a)}
+  )
+;; equivalent to
+(definition NP-complete ∀{x ∈ sentence} (decision-problem x)
+  )
+
+(theorem "Cook-Levin" (3SAT ∈ NP-complete))
+
+(definition decides? ∀{M ∈ turing-machine} ∀{problem ∈ (decision-problem 'a)}
+  ∀{input ∈ 'a} {M accepts? input} ⇔ (problem input))
+
+(definition P ∀{problem ∈ (decision-problem 'a)}
+  ∃{M ∈ turing-machine} {{M decides? problem}
+			 ∧ ∀{input ∈ 'a} (time {M on a}) ∈ (polynomial (length input))})
+
+(theorem (using ZFC)
+	 (P ⊆ NP)
+	 )
+
+(theorem (prime? ∈ P))

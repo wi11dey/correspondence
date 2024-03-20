@@ -1,0 +1,5 @@
+(theory relativistic
+	(axiom ∃{c ∈ speed}
+	       "speed of light")
+	(defintion + ∀{x ∈ velocity} ∀{y ∈ velocity} ∃{z ∈ velocity}
+	  {{x + y}/{1 + {{x * y}/{c ^ 2}}}}))
