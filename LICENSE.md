@@ -1,8 +1,8 @@
 # The Parity Public License 7.0.0
 
-Contributor: $name
+Contributor: Will Dey
 
-Source Code: $address
+Source Code: https://github.com/wi11dey/correspondence
 
 ## Purpose
 
