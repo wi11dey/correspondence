@@ -2,7 +2,12 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE UnicodeSyntax #-}
+{-# LANGUAGE BlockArguments #-}
 
+import Control.Monad
+import Control.Monad.Wrapped
+import Data.Function
 import Data.Sequence
 
 data Relation = Relation
@@ -15,49 +20,53 @@ data Relation = Relation
   } |
   Equals Element Element -- Equality is the only primitive notion.
 
+seed = Relation
+  {
+    name = "",
+    fixity = Prefix,
+    precedence = 0,
+    associativity = LeftAssociative,
+    elements = empty
+  }
+
 data Associativity = LeftAssociative | RightAssociative | NonAssociative
 
 data Fixity = Prefix | Infix | Postfix
 
 class Show r ⇒ RelationType r
-  buildRelation :: (Relation → Sentence) → r
+  chain :: (Relation → Sentence) → r
 
 instance RelationType (Sentence) where
-  buildRelation next = next $ Relation
-    {
-      name = "",
-      fixity = Prefix,
-      precedence = 0,
-      associativity = LeftAssociative,
-      elements = empty
-    }
+  chain = ($ seed)
 
 instance (Argument a, RelationType r) ⇒ RelationType (a → r) where
-  buildRelation next arg = buildRelation $ \old →
-    withElement arg $ \element →
-      next $ old { elements = elements old |> element }
+  chain next arg = chain $ \last → unwrap do
+    el ← arg
+    return $ next $ last { elements = elements last |> el }
 
 relation :: RelationType r ⇒ String → r
-relation name = buildRelation $ \relation →
-  relation { name }
+relation name = chain $ \end → end { name }
 
 class Argument a where
-  withElement :: a → (Element → Sentence) → Sentence
+  wrap :: a → Wrapped Sentence Element
 
 instance Argument Element where
-  withElement element cont = cont element
+  wrap = return
 
 instance Argument (Arity 1) where
-  withElement f cont = Ǝ $ \a → f a ∧ cont a
+  wrap f = Wrapped $ \suffix →
+    Ǝ $ \a → f a ∧ suffix a
 
 type family Arity (arity :: Nat) where
   Arity 0 = Sentence
   Arity arity = Argument a ⇒ a → Arity (arity - 1)
 
-withElement2 :: (Argument a, Argument b) => (Element -> Element -> Sentence) -> a -> b -> Sentence
+unwrap :: Wrapped Sentence Sentence → Sentence
+unwrap = flip coerce (const true)
 
 (≡) :: Arity 2
-a ≡ b = withElement2 
+(≡) = ((unwrap . liftM Proposition) .)
+  . (liftM2 Equals `on` wrap)
 
 newtype Symbol = Symbol Int
 
@@ -69,7 +78,7 @@ data Element =
 (+) = infixFunction "+" LeftAssociative 3
 
 prefixRelation :: String → Arity 1
-prefixRelation name arg = withElement arg $ \element → Relation
+prefixRelation name = withElement $ \element → Relation
   {
     name,
     fixity = Prefix,
@@ -91,8 +100,19 @@ data Sentence =
   deriving Eq
 
 (∧) = And
+Bool True ∧ a = a
+a ∧ Bool True = a
+Bool False ∧ _ = false
+_ ∧ Bool False = false
+
 (∨) = Or
+Bool True ∨ _ = true
+_ ∨ Bool True = true
+Bool False ∨ a = a
+a ∨ Bool False = a
+
 (¬) = Not
+(¬) (Bool b) = Prelude.not b
 not = (¬)
 
 data Quantified =
@@ -120,8 +140,8 @@ withFree f =
       $ (deconflict .)
       $ incArg
       $ lambda
-    deconflict (And a b) = And (deconflict a) (deconflict b)
-    deconflict (Or a b) = Or (deconflict a) (deconflict b)
+    deconflict (And a b) = And `on` deconflict
+    deconflict (Or a b) = Or `on` deconflict
     deconflict (Not a) = Not $ deconflict a
     deconflict a = a
 
@@ -134,7 +154,7 @@ withFree f =
       $ i + 1
 
 instance Eq (Element → Sentence) where
-  a == b = withFree a == withFree b
+  a == b = (==) `on` withFree a
 
 forAll = Ɐ
 exists = Ǝ
