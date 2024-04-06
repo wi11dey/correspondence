@@ -27,7 +27,7 @@ class Show r ⇒ RelationType r
   chain :: Wrapper Sentence Relation → r
 
 instance RelationType (Sentence) where
-  chain = flip coerce $ \relation →
+  chain = flip coerce \relation →
     Proposition $ relation { elements = reverse $ elements relation }
 
 instance (Argument a, RelationType r) ⇒ RelationType (a → r) where
@@ -53,8 +53,8 @@ instance Argument Element where
   wrap = return
 
 instance Argument (Arity 1) where
-  wrap f = Wrapper $ \suffix →
-    Ǝ $ \a → f a ∧ suffix a
+  wrap f = Wrapper \suffix →
+    Ǝ \a → f a ∧ suffix a
 
 type family Arity (arity :: Nat) where
   Arity 0 = Sentence
@@ -77,7 +77,7 @@ data Element =
 (+) = infixFunction "+" LeftAssociative 3
 
 prefixRelation :: String → Arity 1
-prefixRelation name = withElement $ \element → Relation
+prefixRelation name = withElement \element → Relation
   {
     name,
     fixity = Prefix,
@@ -181,4 +181,4 @@ instance Show Symbol where
 
 (*) = infixFunction "*" LeftAssociative 3
 
-divides dividend divisor = Ǝ $ \a → a * dividend ≡ divisor
+divides dividend divisor = Ǝ \a → a * dividend ≡ divisor
