@@ -20,15 +20,6 @@ data Relation = Relation
   } |
   Equals Element Element -- Equality is the only primitive notion.
 
-seed = Relation
-  {
-    name = "",
-    fixity = Prefix,
-    precedence = 0,
-    associativity = LeftAssociative,
-    elements = empty
-  }
-
 data Associativity = LeftAssociative | RightAssociative | NonAssociative
 
 data Fixity = Prefix | Infix | Postfix
@@ -37,7 +28,14 @@ class Show r ⇒ RelationType r
   chain :: (Relation → Sentence) → r
 
 instance RelationType (Sentence) where
-  chain = ($ seed)
+  chain = ($ Relation
+    {
+      name = "",
+      fixity = Prefix,
+      precedence = 0,
+      associativity = LeftAssociative,
+      elements = empty
+    })
 
 instance (Argument a, RelationType r) ⇒ RelationType (a → r) where
   chain next arg = chain $ \last → unwrap do
