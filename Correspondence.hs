@@ -6,60 +6,61 @@
 {-# LANGUAGE BlockArguments #-}
 
 import Control.Monad
-import Control.Monad.Wrapped
+import Control.Monad.Wrapper
 import Data.Function
-import Data.Sequence
+import Data.Coerce
 
 data Relation = Relation
   {
     name :: String,
     fixity :: Fixity,
-    precedence :: Natural,
+    precedence :: Int,
     associativity :: Associativity,
-    elements :: Seq Element
-  } |
-  Equals Element Element -- Equality is the only primitive notion.
+    elements :: [Element]
+  }
 
 data Associativity = LeftAssociative | RightAssociative | NonAssociative
 
 data Fixity = Prefix | Infix | Postfix
 
 class Show r ⇒ RelationType r
-  chain :: (Relation → Sentence) → r
+  chain :: Wrapper Sentence Relation → r
 
 instance RelationType (Sentence) where
-  chain = ($ Relation
-    {
-      name = "",
-      fixity = Prefix,
-      precedence = 0,
-      associativity = LeftAssociative,
-      elements = empty
-    })
+  chain = flip coerce $ \relation →
+    Proposition $ relation { elements = reverse $ elements relation }
 
 instance (Argument a, RelationType r) ⇒ RelationType (a → r) where
-  chain next arg = chain $ \last → unwrap do
-    el ← arg
-    return $ next $ last { elements = elements last |> el }
+  chain current arg = chain do
+    relation ← current
+    element ← wrap arg
+    return relation { elements = element:(elements relation) }
 
 relation :: RelationType r ⇒ String → r
-relation name = chain $ \end → end { name }
+relation name = chain $ return $ Relation
+  {
+    name,
+    fixity = Prefix,
+    precedence = 10,
+    associativity = LeftAssociative,
+    elements = []
+  }
 
 class Argument a where
-  wrap :: a → Wrapped Sentence Element
+  wrap :: a → Wrapper Sentence Element
 
 instance Argument Element where
   wrap = return
 
 instance Argument (Arity 1) where
-  wrap f = Wrapped $ \suffix →
+  wrap f = Wrapper $ \suffix →
     Ǝ $ \a → f a ∧ suffix a
 
 type family Arity (arity :: Nat) where
   Arity 0 = Sentence
   Arity arity = Argument a ⇒ a → Arity (arity - 1)
 
-unwrap :: Wrapped Sentence Sentence → Sentence
+unwrap :: Wrapper Sentence Sentence → Sentence
 unwrap = flip coerce (const true)
 
 (≡) :: Arity 2
