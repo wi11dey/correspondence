@@ -54,7 +54,7 @@ instance Argument Element where
 
 instance Argument (Arity 1) where
   wrap f = Wrapper \suffix →
-    Ǝ \a → f a ∧ suffix a
+    Ǝ\a → f a ∧ suffix a
 
 type family Arity (arity :: Nat) where
   Arity 0 = Sentence
@@ -181,4 +181,4 @@ instance Show Symbol where
 
 (*) = infixFunction "*" LeftAssociative 3
 
-divides dividend divisor = Ǝ \a → a * dividend ≡ divisor
+divides dividend divisor = Ǝ\a → a * dividend ≡ divisor
