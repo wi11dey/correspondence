@@ -1,20 +1,19 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ViewPatterns #-}
 
 import Data.Sequence
 
-(≡) = (==)
-
 data Relation = Relation
   {
-    symbol :: String,
+    name :: String,
     fixity :: Fixity,
     precedence :: Natural,
     associativity :: Associativity,
-    terms :: Seq Term
+    elements :: Seq Element
   } |
-  Equals Term Term
+  Equals Element Element -- Equality is the only primitive notion.
 
 data Associativity = LeftAssociative | RightAssociative | NonAssociative
 
@@ -26,53 +25,60 @@ class Show r ⇒ RelationType r
 instance RelationType (Sentence) where
   buildRelation next = next $ Relation
     {
-      symbol = "",
+      name = "",
       fixity = Prefix,
       precedence = 0,
       associativity = LeftAssociative,
-      terms = empty
+      elements = empty
     }
 
 instance (Argument a, RelationType r) ⇒ RelationType (a → r) where
   buildRelation next arg = buildRelation $ \old →
-    withTerm arg $ \term →
-      next $ old { terms = terms old |> term }
+    withElement arg $ \element →
+      next $ old { elements = elements old |> element }
 
 relation :: RelationType r ⇒ String → r
-relation symbol = buildRelation $ \relation →
-  relation { symbol }
+relation name = buildRelation $ \relation →
+  relation { name }
 
 class Argument a where
-  withTerm :: a → (Term → Sentence) → Sentence
+  withElement :: a → (Element → Sentence) → Sentence
 
-instance Argument Term where
-  withTerm term cont = cont term
+instance Argument Element where
+  withElement element cont = cont element
 
 instance Argument (Arity 1) where
-  withTerm f = Ǝ $ \a → f a ∧ cont a
+  withElement f cont = Ǝ $ \a → f a ∧ cont a
 
 type family Arity (arity :: Nat) where
   Arity 0 = Sentence
   Arity arity = Argument a ⇒ a → Arity (arity - 1)
 
-data Term =
-  Variable String |
+withElement2 :: (Argument a, Argument b) => (Element -> Element -> Sentence) -> a -> b -> Sentence
+
+(≡) :: Arity 2
+a ≡ b = withElement2 
+
+newtype Symbol = Symbol Int
+
+data Element =
+  Variable Symbol |
   Constant String
 
 (>) = relation ">" :: Arity 2
 (+) = infixFunction "+" LeftAssociative 3
 
 prefixRelation :: String → Arity 1
-prefixRelation symbol arg = withTerm arg $ \term → Relation
+prefixRelation name arg = withElement arg $ \element → Relation
   {
-    symbol,
+    name,
     fixity = Prefix,
     precedence = 0,
     associativity = LeftAssociative,
-    terms = [term]
+    elements = [element]
   }
-infixRelation :: String → Associativity → Natural → Arity 2
-infixFunction :: String → Associativity → Natural → Arity 3
+infixRelation :: String → Associativity → Int → Arity 2
+infixFunction :: String → Associativity → Int → Arity 3
 postfixRelation :: String → Arity 1
 
 data Sentence =
@@ -87,11 +93,48 @@ data Sentence =
 (∧) = And
 (∨) = Or
 (¬) = Not
+not = (¬)
 
 data Quantified =
-  Ɐ (Term → Sentence) |
-  Ǝ (Term → Sentence)
-  deriving Show
+  Ɐ (Element → Sentence) |
+  Ǝ (Element → Sentence)
+  deriving (Eq, Show)
+
+type Quantifier = (Element → Sentence) → Quantified
+
+deconstruct :: Quantified → (Quantifier, Element → Sentence)
+deconstruct (Ɐ lambda) = (Ɐ, lambda)
+deconstruct (Ǝ lambda) = (Ǝ, lambda)
+
+withFree :: (Element → Sentence) → Sentence
+withFree f =
+  deconflict
+  $ f
+  $ Variable
+  $ Symbol 0
+  where
+    deconflict :: Sentence → Sentence
+    deconflict (deconstruct → (quantifier, lambda)) =
+      Quantified
+      $ quantifier
+      $ (deconflict .)
+      $ incArg
+      $ lambda
+    deconflict (And a b) = And (deconflict a) (deconflict b)
+    deconflict (Or a b) = Or (deconflict a) (deconflict b)
+    deconflict (Not a) = Not $ deconflict a
+    deconflict a = a
+
+    incArg :: (Element → Sentence) → Element → Sentence
+    incArg lambda c@(Constant _) = lambda c
+    incArg lambda (Variable (Symbol i)) =
+      lambda
+      $ Variable
+      $ Symbol
+      $ i + 1
+
+instance Eq (Element → Sentence) where
+  a == b = withFree a == withFree b
 
 forAll = Ɐ
 exists = Ǝ
@@ -99,21 +142,24 @@ exists = Ǝ
 true = Bool True
 false = Bool False
 
-instance Show ((Variable → Sentence) → Quantified) where
+instance Show Quantifier where
   show quantifier =
     take 1
     $ show
     $ quantifier
     $ const true
 
-(*) = infixFunction "*" LeftAssociative 3
-
-divides dividend divisor = Ǝ $ \a → a * dividend ≡ divisor
-
-instance Show s ⇒ Show (Term → s)
+instance Show s ⇒ Show (Element → s)
 
 letters = ['a'..'z']
 
 names :: [String]
 names = bfs $ map (:[]) letters where
   bfs q = q ++ bfs ((:) <$> letters <*> q)
+
+instance Show Symbol where
+  show (Symbol i) = names !! i
+
+(*) = infixFunction "*" LeftAssociative 3
+
+divides dividend divisor = Ǝ $ \a → a * dividend ≡ divisor
