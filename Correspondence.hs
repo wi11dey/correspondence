@@ -1,9 +1,12 @@
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UnicodeSyntax #-}
+{-# LANGUAGE ViewPatterns #-}
 
 import Control.Monad
 import Control.Monad.Wrapper
@@ -16,7 +19,7 @@ data Relation = Relation
     fixity :: Fixity,
     precedence :: Int,
     associativity :: Associativity,
-    elements :: [Element]
+    arguments :: [Element]
   }
 
 data Associativity = LeftAssociative | RightAssociative | NonAssociative
@@ -28,13 +31,13 @@ class Show r ⇒ RelationType r
 
 instance RelationType (Sentence) where
   chain = flip coerce \relation →
-    Proposition $ relation { elements = reverse $ elements relation }
+    Proposition $ relation { arguments = reverse $ arguments relation }
 
 instance (Argument a, RelationType r) ⇒ RelationType (a → r) where
   chain current arg = chain do
     relation ← current
     element ← wrap arg
-    return relation { elements = element:(elements relation) }
+    return relation { arguments = element:(arguments relation) }
 
 relation :: RelationType r ⇒ String → r
 relation name = chain $ return $ Relation
@@ -43,7 +46,7 @@ relation name = chain $ return $ Relation
     fixity = Prefix,
     precedence = 10,
     associativity = LeftAssociative,
-    elements = []
+    arguments = []
   }
 
 class Argument a where
@@ -62,12 +65,10 @@ type family Arity (arity :: Nat) where
 
 unwrap :: Wrapper Sentence Sentence → Sentence
 unwrap = flip coerce (const true)
-
-(≡) :: Arity 2
+(
+≡) :: Arity 2
 (≡) = ((unwrap . liftM Proposition) .)
   . (liftM2 Equals `on` wrap)
-
-newtype Symbol = Symbol Int
 
 data Element =
   Variable Symbol |
@@ -83,7 +84,7 @@ prefixRelation name = withElement \element → Relation
     fixity = Prefix,
     precedence = 0,
     associativity = LeftAssociative,
-    elements = [element]
+    arguments = [element]
   }
 infixRelation :: String → Associativity → Int → Arity 2
 infixFunction :: String → Associativity → Int → Arity 3
@@ -95,8 +96,30 @@ data Sentence =
   Or Sentence Sentence |
   Not Sentence |
   Proposition Relation |
-  Quantified Quantified |
-  deriving Eq
+  ∀f. Formula f ⇒ Ɐ (Element → f) |
+  ∀f. Formula f ⇒ Ǝ (Element → f)
+
+deMorgan :: Sentence → Sentence
+deMorgan (Not (a `And` b)) = (Not a) `Or` (Not b)
+deMorgan (Not (a `Or` b)) = (Not a) `And` (Not b)
+deMorgan (Not (Ɐ formula)) = Ǝ $ formulaMap $ deMorgan . Not
+deMorgan (Not (Ǝ formula)) = Ǝ $ formulaMap $ deMorgan . Not
+deMorgan (Bool True `And` a) = a
+deMorgan (a `And` Bool True) = a
+deMorgan (Bool True `And` a) = a
+deMorgan = id
+
+instance Eq Sentence where
+  (Bool a) == (Bool b) = a == b
+  (a `And` b) == (c `And` d) =
+    a == c && c == d ||
+    a == d && b == c
+  (a `Or` b) == (c `Or` d) =
+    a == c && c == d ||
+    a == d && b == c
+  (Not a) == (Not b) = a == b
+  (Proposition a) == (Proposition b) = a == b
+  (Ɐ a) == (Ǝ b)
 
 (∧) = And
 Bool True ∧ a = a
@@ -114,46 +137,46 @@ a ∨ Bool False = a
 (¬) (Bool b) = Prelude.not b
 not = (¬)
 
-data Quantified =
-  Ɐ (Element → Sentence) |
-  Ǝ (Element → Sentence)
-  deriving (Eq, Show)
+newtype Symbol = Symbol Int
 
-type Quantifier = (Element → Sentence) → Quantified
+class Variadic Sentence f ⇒ Formula f where
+class Formula f where
+  free :: f → Sentence
+  increment :: f → f
+  -- TODO can this be made a functor?
+  formulaMap :: (Sentence → Sentence) → f → f
 
-deconstruct :: Quantified → (Quantifier, Element → Sentence)
-deconstruct (Ɐ lambda) = (Ɐ, lambda)
-deconstruct (Ǝ lambda) = (Ǝ, lambda)
+instance Formula Sentence where
+  free = const id
 
-withFree :: (Element → Sentence) → Sentence
-withFree f =
-  deconflict
-  $ f
-  $ Variable
-  $ Symbol 0
-  where
-    deconflict :: Sentence → Sentence
-    deconflict (deconstruct → (quantifier, lambda)) =
-      Quantified
-      $ quantifier
-      $ (deconflict .)
-      $ incArg
-      $ lambda
-    deconflict (And a b) = And `on` deconflict
-    deconflict (Or a b) = Or `on` deconflict
-    deconflict (Not a) = Not $ deconflict a
-    deconflict a = a
+  increment (a `And` b) = And `on` increment
+  increment (a `Or` b) = Or `on` increment
+  increment (Not a) = Not $ increment a
+  increment (Ɐ formula) = Ɐ $ increment formula
+  increment (Ǝ formula) = Ǝ $ increment formula
+  increment = id
 
-    incArg :: (Element → Sentence) → Element → Sentence
-    incArg lambda c@(Constant _) = lambda c
-    incArg lambda (Variable (Symbol i)) =
-      lambda
-      $ Variable
-      $ Symbol
-      $ i + 1
+  formulaMap = id
 
-instance Eq (Element → Sentence) where
-  a == b = (==) `on` withFree a
+instance Formula f ⇒ Element → f where
+  free formula =
+    free
+    $ increment
+    $ formula
+    $ Variable
+    $ Symbol 0
+
+  increment formula (Variable (Symbol i)) =
+    formula
+    $ Variable
+    $ Symbol
+    $ succ i
+  increment = id
+
+  formulaMap = fix ((.) .)
+
+instance Formula f ⇒ Eq f where
+  (==) = (==) `on` free
 
 forAll = Ɐ
 exists = Ǝ
@@ -182,3 +205,4 @@ instance Show Symbol where
 (*) = infixFunction "*" LeftAssociative 3
 
 divides dividend divisor = Ǝ\a → a * dividend ≡ divisor
+
