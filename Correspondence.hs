@@ -104,6 +104,7 @@ data Sentence =
   And Sentence Sentence |
   Or Sentence Sentence |
   Not Sentence |
+  Implies Sentence Sentence |
   Proposition Relation |
   ∀f. Formula f ⇒ Ɐ (Element → f) |
   ∀f. Formula f ⇒ Ǝ (Element → f)
@@ -225,4 +226,45 @@ thm = showFrom
 
 divides dividend divisor = Ǝ\a → a*dividend ≡ divisor
 
-quadroot = Ǝ\x → a*x^2 + b*x + c == c
+
+{-# LANGUAGE GADTs #-}
+
+data Sentence v t =
+  Propositional (Propositional v t) |
+  Quantified t
+
+instance Functor (Sentence v)
+
+data Logic v t =
+  Value v |
+  And (Sentence v t) (Sentence v t) |
+  Or (Sentence v t) (Sentence v t) |
+  Not (Sentence v t) |
+  Proposition (Relation v)
+
+instance Functor (Logic v)
+
+type BooleanLogic t = Logic Bool t
+
+true = Value True
+false = Value False
+
+type PropositionalLogic = BooleanLogic Void
+
+data Quantifier =
+  Ɐ :: Formula 1 f ⇒ (Argument 1 → f) → Quantifier
+  Ǝ :: Formula 1 f ⇒ (Argument 1 → f) → Quantifier
+
+type FirstOrderLogic = BooleanLogic Quantifier
+
+data HigherOrderQuantifier (n :: Nat) where
+  Lift :: HigherOrderQuantifier (n - 1) → HigherOrderQuantifier n
+  Ɐ' :: Formula n f ⇒ (Argument n → f) → HigherOrderQuantifier n
+  Ǝ' :: Formula n f ⇒ (Argument n → f) → HigherOrderQuantifier n
+
+type Order (n :: Nat) = Formula n f ⇒ (Argument n → f) → HigherOrderQuantifier n
+
+type family HigherOrderLogic (n :: Nat) where
+  HigherOrderLogic 0 = PropositionalLogic
+  HigherOrderLogic 1 = FirstOrderLogic
+  HigherOrderLogic n = BooleanLogic (HigherOrderQuantifier n)
