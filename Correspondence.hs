@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UnicodeSyntax #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 
 import Control.Monad
 import Control.Monad.Wrapper
@@ -29,9 +29,12 @@ data Fixity = Prefix | Infix | Postfix
 class Show r ⇒ RelationType r
   chain :: Wrapper Sentence Relation → r
 
-instance RelationType (Sentence) where
+instance RelationType Relation where
   chain = flip coerce \relation →
-    Proposition $ relation { arguments = reverse $ arguments relation }
+    relation { arguments = reverse $ arguments relation }
+
+instance RelationType Sentence where
+  chain = Proposition . (chain :: _ → Relation)
 
 instance (Argument a, RelationType r) ⇒ RelationType (a → r) where
   chain current arg = chain do
@@ -55,9 +58,15 @@ class Argument a where
 instance Argument Element where
   wrap = return
 
+-- e.g. a < b < c
+instance Argument Relation where
+  wrap relation@(Relation { arguments }) = Wrapper \next →
+    Proposition relation ∧ next (last arguments)
+
+-- e.g. a + b + c = 2
 instance Argument (Arity 1) where
-  wrap f = Wrapper \suffix →
-    Ǝ\a → f a ∧ suffix a
+  wrap f = Wrapper \next →
+    Ǝ\a → f a ∧ next a
 
 type family Arity (arity :: Nat) where
   Arity 0 = Sentence
@@ -65,8 +74,8 @@ type family Arity (arity :: Nat) where
 
 unwrap :: Wrapper Sentence Sentence → Sentence
 unwrap = flip coerce (const true)
-(
-≡) :: Arity 2
+
+(≡) :: Arity 2
 (≡) = ((unwrap . liftM Proposition) .)
   . (liftM2 Equals `on` wrap)
 
@@ -202,7 +211,18 @@ names = bfs $ map (:[]) letters where
 instance Show Symbol where
   show (Symbol i) = names !! i
 
+thm = showFrom
+  [
+    (Ǝ formula)
+    (Ǝ formula)
+  ]
+  (Ǝ formula)
+  do
+    have (Ǝ\x → a) `by` substitute :: Axiom "the a"
+    have (Ǝ\x → a) `by` substitute (Ǝ\x → a)
+
 (*) = infixFunction "*" LeftAssociative 3
 
-divides dividend divisor = Ǝ\a → a * dividend ≡ divisor
+divides dividend divisor = Ǝ\a → a*dividend ≡ divisor
 
+quadroot = Ǝ\x → a*x^2 + b*x + c == c
