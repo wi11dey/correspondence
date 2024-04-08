@@ -229,17 +229,17 @@ axiom = const . coerce
 peano =
   [
     axiom @"every natural number has a successor"
-      Ɐ\x → Ǝ\y → succ x == y,
+      $ Ɐ\x → Ǝ\y → succ x == y,
     axiom @"zero is not the successor of any natural number"
-      Ɐ\x → 0 ≠ succ x,
+      $ Ɐ\x → 0 ≠ succ x,
     axiom @"two natural numbers are equal if their successors are equal"
-      Ɐ\x y → succ x == succ y ⟹ x == y,
+      $ Ɐ\x y → succ x == succ y ⟹ x == y,
     axiom @"zero is the identity element of addition for natural numbers"
-      Ɐ\x → x + 0 == x,
+      $ Ɐ\x → x + 0 == x,
     axiom @"the inductive definition of addition for natural numbers"
-      Ɐ\x y → x + succ y == succ $ x + y,
+      $ Ɐ\x y → x + succ y == succ $ x + y,
     axiom @"zero is the annihilator element of multiplication for natural numbers"
-      Ɐ\x → x * 0 == 0,
+      $ Ɐ\x → x * 0 == 0,
   ]
 
 thm = (show :: Thesis "some result")
