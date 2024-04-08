@@ -219,7 +219,9 @@ instance Show Symbol where
 
 ifThenElse condition thenBody elseResult = condition ⟹ thenBody ∧ ¬condition ⟹ elseBody
 
-class Assumption (name :: Symbol) a where
+class Axiom a
+
+class Axiom a ⇒ Assumption (name :: Symbol) a where
   assume :: String → Sentence → a
 
 instance (KnownSymbol name, Assumption name a) ⇒ IsLabel name (Sentence → a) where
@@ -228,25 +230,53 @@ instance (KnownSymbol name, Assumption name a) ⇒ IsLabel name (Sentence → a)
 peano =
   [
     #"every natural number has a successor"
-      $ Ɐ\x → Ǝ\y → succ x == y,
+      $ Ɐ\x → Ǝ\y → succ x ≡ y,
     #"zero is not the successor of any natural number"
       $ Ɐ\x → 0 ≠ succ x,
     #"two natural numbers are equal if their successors are equal"
-      $ Ɐ\x y → succ x == succ y ⟹ x == y,
+      $ Ɐ\x y → succ x ≡ succ y ⟹ x ≡ y,
     #"zero is the identity element of addition for natural numbers"
-      $ Ɐ\x → x + 0 == x,
+      $ Ɐ\x → x + 0 ≡ x,
     #"the inductive definition of addition for natural numbers"
-      $ Ɐ\x y → x + succ y == succ $ x + y,
+      $ Ɐ\x y → x + succ y ≡ succ $ x + y,
     #"zero is the annihilator element of multiplication for natural numbers"
-      $ Ɐ\x → x * 0 == 0,
+      $ Ɐ\x → x * 0 ≡ 0
   ]
 
-(∪) = (++)
+class Theorem (name :: Symbol) where
+  theory :: Axiom a ⇒ [a]
+  show = Sentence
+  proof = Proof a Sentence
 
-thm = show @"some result"
-  (peano ∪ [Ǝ formula, Ǝ formula])
-  (Ǝ formula)
-  do
+instance Theorem "√2 is irrational" where
+  theory = rationals
+
+  show = ¬Ǝ\x → rational x ∧ x^2 ≡ 2
+
+  proof = do
+    x ← supposeForContradiction $ #"√2 is rational"
+      $ Ǝ\x → rational x ∧ x^2 ≡ 2
+
+    (a, b) ← have (Ǝ\a b → x ≡ a/b ∧ whole a ∧ whole b ∧ b ≠ 0) do
+      because @"rationality implies there exists a whole numerator and non-zero denominator"
+
+    withoutLossOfGeneralityAssume $ reduced a b
+
+    have (odd a ∧ odd b) do
+      asdf
+
+    from (x^2 ≡ 2 ∧ x ≡ a/b) $ have (2 ≡ a^2/b^2) do
+      asdf
+
+    have (2*b^2 ≡ a^2) do
+      have (2*b^2 ≡ a^2/b^2*b^2) `by` bothSides (*b^2)
+      from (b ≠ 0) $ have (b^2 ≠ 0) `by` bothSides (^2)
+      have (2*b^2 ≡ a^2) $ because @"cancellation of nonzero denominator"
+
+    contradiction
+
+thm = show @"some result" [peano]
+  (Ɐ\x → Ǝ formula) do
     have (Ǝ\x → a) `by` substitute @"every natural number has a successor"
     have (Ǝ\x → a) `by` substitute $ Ǝ\x → a
 
