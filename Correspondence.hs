@@ -220,13 +220,10 @@ instance Show Symbol where
 ifThenElse condition thenBody elseResult = condition ⟹ thenBody ∧ ¬condition ⟹ elseBody
 
 class Assumption (name :: Symbol) a where
-  assume :: Sentence → a
+  assume :: String → Sentence → a
 
-instance Assumption name Sentence where
-  assume = id
-
-instance Assumption name a ⇒ IsLabel name (Sentence → a) where
-  fromLabel = assume @name
+instance (KnownSymbol name, Assumption name a) ⇒ IsLabel name (Sentence → a) where
+  fromLabel = assume @name (symbolVal (Proxy :: Proxy name))
 
 peano =
   [
