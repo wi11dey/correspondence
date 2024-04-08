@@ -3,10 +3,12 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE DerivingFunctor #-}
 
+import Data.Coerce
 import Data.Void
 import Data.Proxy
 import Control.Monad
 
+-- (Logic :: * → * → *) creates a metalanguage as a function of the truth values and quantifiers
 data Logic t q =
   Truth t |
   And (Logic t q) (Logic t q) |
@@ -20,6 +22,56 @@ data Logic t q =
 true = Truth True
 false = Truth False
 
+class (Eq e, Show v) ⇒ Variable q v where
+  zeroVar :: v
+  nextVar :: v → v
+
+class (Eq e, Show e) ⇒ Element q e
+
+instance Variable q v ⇒ Element q v
+
+instance (Num e) ⇒ Element FirstOrder v
+
+instance Element (HigherOrder n) (Set (n - 1) a)
+
+type family Set (n :: Nat) a where
+  Set 0 = ()
+  Set 1 = [a]
+  Set n = [Set (n - 1) a]
+
+newtype Constant = Constant String
+  deriving Eq
+
+instance IsLabel (c :: Symbol) Constant where
+  fromLabel = Constant $ symbolVal (Proxy :: Proxy c)
+
+instance Show Constant where
+  show = ('#':) . quote . coerce
+    where
+      quote c
+        | isIdentifier c = c
+        | otherwise = '"':(c ++ "\"")
+
+      isIdentifier _ = False
+      isIdentifier ('_':rest) = all isIdentifierChar rest
+      isIdentifier (start:rest)
+        | isLower start = all isIdentifierChar rest
+
+      isIdentifierChar _ = False
+      isIdentifierChar '_' = True
+      isIdentifierChar '\'' = True
+      isIdentifierChar c
+        | isAlpha c = True
+        | isDigit c = True
+
+instance Element FirstOrder Constant
+
+newtype Variable1 = Variable1 Int
+
+instance Variable FirstOrder Variable1 where
+  zeroVar = coerce 0
+  nextVar = coerce . succ . coerce
+
 data Element (n :: Nat) =
   Variable Int |
   Constant String
@@ -28,6 +80,8 @@ class Variable v ⇒ Quantifier v q where
   type Element q
   newVar :: v
   nextVar :: v → v
+
+type ZerothOrder = Void
 
 data FirstOrder =
   Ɐ :: Formula (Element 1) f ⇒ (Element 1 → f) → FirstOrder
@@ -123,11 +177,14 @@ names = join bfs where
 instance Show (Element 0) where
   show = const "_"
 
-instance Show (Element 1) where
-  show (Variable i) = (!! i) $ names $ map return ['a'..'z']
+name :: [Char] → Int → String
+name = (!!) . names . map return
 
-instance Show (Element 2) where
-  show (Variable i) = (!! i) $ names $ map return ['A'..'Z']
+instance Show (Element 1) where show (Variable i) = name ['𝘢'..'𝘻'] i
+instance Show (Element 2) where show (Variable i) = name ['𝗮'..'𝘇'] i
+instance Show (Element 3) where show (Variable i) = name ['𝙖'..'𝙯'] i
+instance Show (Element 4) where show (Variable i) = name ['𝘈'..'𝘡'] i
+instance Show (Element 5) where show (Variable i) = name ['𝘈'..'𝘡'] i
 
 subscript :: Int → String
 subscript =
