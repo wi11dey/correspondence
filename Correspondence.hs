@@ -3,15 +3,17 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UnicodeSyntax #-}
-{-# LANGUAGE PartialTypeSignatures #-}
 
 import Control.Monad
 import Control.Monad.Wrapper
 import Data.Function
 import Data.Coerce
+import GHC.TypeLits
 
 data Relation = Relation
   {
@@ -216,20 +218,28 @@ instance Show Symbol where
 
 ifThenElse condition thenBody elseResult = condition ⟹ thenBody ∧ ¬condition ⟹ elseBody
 
-class Assumption (name :: Symbol) where
-  statement :: Sentence
+class Assumption (name :: Symbol) a
 
-newtype Theorem (name :: Symbol) = Theorem Sentence
-  deriving Assumption
+newtype Theorem = Theorem Sentence
 
-instance Assumption name (Theorem name) where
-  statement = coerce
+-- TODO could remove throwaway lambda with type Sentence → ∀ name. Assumption name a ⇒ a
+axiom :: Assumption name a ⇒ Sentence → a → Theorem
+axiom = const . coerce
 
-axiom :: Assumption (name :: Symbol) a ⇒ Sentence → a
-
-arithmetic =
+peano =
   [
-    axiom (Ɐ\x → 0 ≠ succ x) :: Theorem "asdf"
+    axiom @"every natural number has a successor"
+      Ɐ\x → Ǝ\y → succ x = y,
+    axiom @"zero is not the successor of any natural number"
+      Ɐ\x → 0 ≠ succ x,
+    axiom @"two natural numbers are equal if their successors are equal"
+      Ɐ\x y → succ x = succ y ⟹ x = y,
+    axiom @"zero is the identity element of addition for natural numbers"
+      Ɐ\x → x + 0 = x,
+    axiom @"the inductive definition of addition for natural numbers"
+      Ɐ\x y → x + succ y = succ $ x + y,
+    axiom @"zero is the annihilator element of multiplication for natural numbers"
+      Ɐ\x → x * 0 = 0,
   ]
 
 thm = (show :: Thesis "some result")
