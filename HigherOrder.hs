@@ -54,11 +54,8 @@ type family HigherOrderLogic t (n :: Nat) where
 class Functor s ⇒ Sentence q s where
   quantified :: s → Logic t q
 
-instance (Liftable q p, Sentence q s) ⇒ Sentence p s where
+instance (Sentence q s, Liftable q p) ⇒ Sentence p s where
   quantified sentence = fmap lift (quantified sentence :: Logic t q)
-
-instance (Sentence (HigherOrder m) s, m <= n) ⇒ Sentence (HigherOrder n) s where
-  quantified sentence = fmap Lift (quantified sentence :: Logic t (HigherOrder m))
 
 instance Sentence q (Logic t q) where
   quantified = id
