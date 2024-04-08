@@ -252,7 +252,6 @@ instance Theorem "√2 is irrational" where
   theory = rationals
 
   show = ¬Ǝ\x → rational x ∧ x^2 ≡ 2
-
   proof = do
     x ← supposeForContradiction $ #"√2 is rational"
       $ Ǝ\x → rational x ∧ x^2 ≡ 2

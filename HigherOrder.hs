@@ -28,8 +28,21 @@ data FirstOrder =
   Ǝ :: Formula 1 f ⇒ (Element → f) → FirstOrder
 
 data HigherOrder (n :: Nat) where
+  Lift1 :: (1 <= n) ⇒ FirstOrder → HigherOrder n
+  Lift :: (m <= n) ⇒ HigherOrder m → HigherOrder n
   Ɐ' :: Formula n f ⇒ (Argument n → f) → HigherOrder n
   Ǝ' :: Formula n f ⇒ (Argument n → f) → HigherOrder n
+
+class Liftable a b where
+  lift :: a → b
+
+-- An first-order sentence is also an nth-order sentence whenever 1 ≤ n
+instance (1 <= n) ⇒ Liftable FirstOrder (HigherOrder n) where
+  lift = Lift1
+
+-- An mth-order sentence is also an nth-order sentence whenever m ≤ n
+instance (m <= n) ⇒ Liftable (HigherOrder m) (HigherOrder n) where
+  lift = Lift
 
 type Order (n :: Nat) = Formula n f ⇒ (Argument n → f) → HigherOrder n
 
@@ -40,6 +53,12 @@ type family HigherOrderLogic t (n :: Nat) where
 
 class Functor s ⇒ Sentence q s where
   quantified :: s → Logic t q
+
+instance (Liftable q p, Sentence q s) ⇒ Sentence p s where
+  quantified sentence = fmap lift (quantified sentence :: Logic t q)
+
+instance (Sentence (HigherOrder m) s, m <= n) ⇒ Sentence (HigherOrder n) s where
+  quantified sentence = fmap Lift (quantified sentence :: Logic t (HigherOrder m))
 
 instance Sentence q (Logic t q) where
   quantified = id
@@ -83,3 +102,13 @@ instance (Sentence q s, Formula s f) ⇒ Formula (q → f) where
 class Variable v where
   anyVar :: v
   nextVar :: v
+
+data Prefix = Prefix
+
+(¬) :: Sentence q s ⇒ () → s → s
+(¬) = const $ Not . quantified
+
+instance Sentence q s ⇒ Sentence q (() → s) where
+  quantified = fix (. ($ ()))
+
+(∧) :: Sentence q s ⇒ s → s → s
