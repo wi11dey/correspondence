@@ -216,6 +216,22 @@ instance Show Symbol where
 
 ifThenElse condition thenBody elseResult = condition ⟹ thenBody ∧ ¬condition ⟹ elseBody
 
+class Assumption (name :: Symbol) where
+  statement :: Sentence
+
+newtype Theorem (name :: Symbol) = Theorem Sentence
+  deriving Assumption
+
+instance Assumption name (Theorem name) where
+  statement = coerce
+
+axiom :: Assumption (name :: Symbol) a ⇒ Sentence → a
+
+arithmetic =
+  [
+    axiom (Ɐ\x → 0 ≠ succ x) :: Theorem "asdf"
+  ]
+
 thm = (show :: Thesis "some result")
   [
     (Ǝ formula)
@@ -224,7 +240,7 @@ thm = (show :: Thesis "some result")
   (Ǝ formula)
   do
     have (Ǝ\x → a) `by` substitute :: Axiom "the a"
-    have (Ǝ\x → a) `by` substitute (Ǝ\x → a)
+    have (Ǝ\x → a) `by` substitute $ Ǝ\x → a
 
 (*) = infixFunction "*" LeftAssociative 3
 
