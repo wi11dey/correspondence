@@ -4,6 +4,8 @@
 {-# LANGUAGE DerivingFunctor #-}
 
 import Data.Void
+import Data.Proxy
+import Control.Monad
 
 data Logic t q =
   Truth t |
@@ -18,20 +20,24 @@ data Logic t q =
 true = Truth True
 false = Truth False
 
+data Element (n :: Nat) =
+  Variable Int |
+  Constant String
+
 class Variable v ⇒ Quantifier v q where
   type Element q
   newVar :: v
   nextVar :: v → v
 
 data FirstOrder =
-  Ɐ :: Formula 1 f ⇒ (Element → f) → FirstOrder
-  Ǝ :: Formula 1 f ⇒ (Element → f) → FirstOrder
+  Ɐ :: Formula (Element 1) f ⇒ (Element 1 → f) → FirstOrder
+  Ǝ :: Formula (Element 1) f ⇒ (Element 1 → f) → FirstOrder
 
 data HigherOrder (n :: Nat) where
   Lift1 :: (1 <= n) ⇒ FirstOrder → HigherOrder n
   Lift :: (m <= n) ⇒ HigherOrder m → HigherOrder n
-  Ɐ' :: Formula n f ⇒ (Argument n → f) → HigherOrder n
-  Ǝ' :: Formula n f ⇒ (Argument n → f) → HigherOrder n
+  Ɐ' :: Formula (Element n) f ⇒ (Element n → f) → HigherOrder n
+  Ǝ' :: Formula (Element n) f ⇒ (Element n → f) → HigherOrder n
 
 class Liftable a b where
   lift :: a → b
@@ -109,3 +115,33 @@ instance Sentence q s ⇒ Sentence q (() → s) where
   quantified = fix (. ($ ()))
 
 (∧) :: Sentence q s ⇒ s → s → s
+
+names :: [String] → [String]
+names = join bfs where
+  bfs letters q = q ++ bfs letters ((++) <$> letters <*> q)
+
+instance Show (Element 0) where
+  show = const "_"
+
+instance Show (Element 1) where
+  show (Variable i) = (!! i) $ names $ map return ['a'..'z']
+
+instance Show (Element 2) where
+  show (Variable i) = (!! i) $ names $ map return ['A'..'Z']
+
+subscript :: Int → String
+subscript =
+  (. show)
+  $ map
+  $ (['₀'..'₉'] !!)
+  . subtract (fromEnum '0')
+  . fromEnum
+
+instance Show (Element n) where
+  show (Constant s) = s
+  show (Variable i) =
+    (!! i)
+    $ map (++ subscript order)
+    $ names
+    $ map return ['A'..'Z']
+    where order = natValue (Proxy :: Proxy n)
