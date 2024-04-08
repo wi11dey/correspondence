@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UnicodeSyntax #-}
+{-# LANGUAGE OverloadedLabels #-}
 
 import Control.Monad
 import Control.Monad.Wrapper
@@ -218,35 +219,35 @@ instance Show Symbol where
 
 ifThenElse condition thenBody elseResult = condition ⟹ thenBody ∧ ¬condition ⟹ elseBody
 
-class Assumption (name :: Symbol) a
+class Assumption (name :: Symbol) a where
+  assume :: Sentence → a
 
-newtype Theorem = Theorem Sentence
+instance Assumption name Sentence where
+  assume = id
 
--- TODO could remove throwaway lambda with type Sentence → (∀ name. Assumption name a ⇒ a)
-axiom :: Assumption name a ⇒ Sentence → a → Theorem
-axiom = const . coerce
+instance Assumption name a ⇒ IsLabel name (Sentence → a) where
+  fromLabel = assume @name
 
 peano =
   [
-    axiom @"every natural number has a successor"
+    #"every natural number has a successor"
       $ Ɐ\x → Ǝ\y → succ x == y,
-    axiom @"zero is not the successor of any natural number"
+    #"zero is not the successor of any natural number"
       $ Ɐ\x → 0 ≠ succ x,
-    axiom @"two natural numbers are equal if their successors are equal"
+    #"two natural numbers are equal if their successors are equal"
       $ Ɐ\x y → succ x == succ y ⟹ x == y,
-    axiom @"zero is the identity element of addition for natural numbers"
+    #"zero is the identity element of addition for natural numbers"
       $ Ɐ\x → x + 0 == x,
-    axiom @"the inductive definition of addition for natural numbers"
+    #"the inductive definition of addition for natural numbers"
       $ Ɐ\x y → x + succ y == succ $ x + y,
-    axiom @"zero is the annihilator element of multiplication for natural numbers"
+    #"zero is the annihilator element of multiplication for natural numbers"
       $ Ɐ\x → x * 0 == 0,
   ]
 
-thm = (show :: Thesis "some result")
-  [
-    (Ǝ formula)
-    (Ǝ formula)
-  ]
+(∪) = (++)
+
+thm = show @"some result"
+  (peano ∪ [Ǝ formula, Ǝ formula])
   (Ǝ formula)
   do
     have (Ǝ\x → a) `by` substitute @"every natural number has a successor"
