@@ -143,13 +143,15 @@ _ ∨ Bool True = true
 Bool False ∨ a = a
 a ∨ Bool False = a
 
+-- TODO make binary operator so can be used as "prefix" operator in a section
 (¬) = Not
 (¬) (Bool b) = Prelude.not b
 not = (¬)
 
+(⟹) = Implies
+
 newtype Symbol = Symbol Int
 
-class Variadic Sentence f ⇒ Formula f where
 class Formula f where
   free :: f → Sentence
   increment :: f → f
@@ -157,7 +159,7 @@ class Formula f where
   formulaMap :: (Sentence → Sentence) → f → f
 
 instance Formula Sentence where
-  free = const id
+  free = id
 
   increment (a `And` b) = And `on` increment
   increment (a `Or` b) = Or `on` increment
@@ -168,7 +170,7 @@ instance Formula Sentence where
 
   formulaMap = id
 
-instance Formula f ⇒ Element → f where
+instance Formula f ⇒ Formula (Element → f) where
   free formula =
     free
     $ increment
@@ -212,7 +214,9 @@ names = bfs $ map (:[]) letters where
 instance Show Symbol where
   show (Symbol i) = names !! i
 
-thm = showFrom
+ifThenElse condition thenBody elseResult = condition ⟹ thenBody ∧ ¬condition ⟹ elseBody
+
+thm = (show :: Thesis "some result")
   [
     (Ǝ formula)
     (Ǝ formula)
@@ -225,38 +229,3 @@ thm = showFrom
 (*) = infixFunction "*" LeftAssociative 3
 
 divides dividend divisor = Ǝ\a → a*dividend ≡ divisor
-
-
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE DerivingFunctor #-}
-
-import Data.Void
-
-data Logic t q =
-  Truth t |
-  And (Logic t q) (Logic t q) |
-  Or (Logic t q) (Logic t q) |
-  Not (Logic t q) |
-  Implies (Logic t q) (Logic t q) |
-  Proposition (Relation t) |
-  Quantified q
-  deriving (Eq, Functor)
-
-true = Truth True
-false = Truth False
-
-data FirstOrder =
-  Ɐ :: Formula 1 f ⇒ (Argument 1 → f) → FirstOrder
-  Ǝ :: Formula 1 f ⇒ (Argument 1 → f) → FirstOrder
-
-data HigherOrder (n :: Nat) where
-  Lift :: HigherOrder (n - 1) → HigherOrder n
-  Ɐ' :: Formula n f ⇒ (Argument n → f) → HigherOrder n
-  Ǝ' :: Formula n f ⇒ (Argument n → f) → HigherOrder n
-
-type Order (n :: Nat) = Formula n f ⇒ (Argument n → f) → HigherOrder n
-
-type family HigherOrderLogic v (n :: Nat) where
-  HigherOrderLogic 0 = Logic v Void
-  HigherOrderLogic 1 = Logic v FirstOrder
-  HigherOrderLogic n = Logic v (HigherOrder n)
