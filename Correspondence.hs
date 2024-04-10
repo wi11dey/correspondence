@@ -217,6 +217,11 @@ names = bfs $ map (:[]) letters where
 instance Show Symbol where
   show (Symbol i) = names !! i
 
+-- Sentences in head position will always automatically be popped if possible
+(¢) :: Sentence → Element → Sentence -- Application (play on $)
+
+infixl 0 ¢
+
 ifThenElse condition thenBody elseResult = condition ⟹ thenBody ∧ ¬condition ⟹ elseBody
 
 class Axiom a
