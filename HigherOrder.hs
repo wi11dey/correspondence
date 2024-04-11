@@ -8,14 +8,24 @@ import Data.Void
 import Data.Proxy
 import Control.Monad
 
--- (Logic :: * → * → *) creates a metalanguage as a function of the truth values and quantifiers
-data Logic t q =
-  Truth t |
-  And (Logic t q) (Logic t q) |
-  Or (Logic t q) (Logic t q) |
-  Not (Logic t q) |
-  Implies (Logic t q) (Logic t q) |
-  Proposition (Relation t) |
+class Lattice t (l :: * → *) where
+  fromTruth :: t → l a
+  (∧) :: l a → l a → l a
+  (∨) :: l a → l a → l a
+
+class Lattice t l ⇒ ComplementedLattice t l where
+  complement :: l a → l a
+
+data PrefixComplement
+
+(¬) :: CompletementedLattice t l ⇒ PrefixComplement → l → l
+
+instance ComplementedLattice t l ⇒ ComplementedLattice t (PrefixComplement → l)
+
+-- (Logic :: (* → *) → * → *) creates a metalanguage as a function of the underlying latice and quantifiers
+data Logic l q =
+  Connective (l (Logic l q))
+  Proposition Relation |
   Quantified q
   deriving (Eq, Functor)
 
