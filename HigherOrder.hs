@@ -8,10 +8,13 @@ import Data.Void
 import Data.Proxy
 import Control.Monad
 
-class Lattice t (l :: * → *) where
+class Functor l ⇒ Lattice t l where
   fromTruth :: t → l a
-  (∧) :: l a → l a → l a
-  (∨) :: l a → l a → l a
+  (∧) :: a → a → l a
+  (∨) :: a → a → l a
+
+class Lattice t l ⇒ ImplicationLattice t l where
+  implies :: a → a → l a
 
 class Lattice t l ⇒ ComplementedLattice t l where
   complement :: l a → l a
@@ -21,6 +24,23 @@ data PrefixComplement
 (¬) :: CompletementedLattice t l ⇒ PrefixComplement → l → l
 
 instance ComplementedLattice t l ⇒ ComplementedLattice t (PrefixComplement → l)
+
+instance ImplicationLattice t l ⇒ ComplementedLattice t l where
+  implies a b = ¬a ∨ b
+
+(⟹) = implies
+
+data BooleanAlgebra a =
+  Boolean Bool |
+  And a a |
+  Or a a |
+  Not a a
+
+instance ComplementedLattice Bool BooleanAlgebra where
+  fromTruth = Boolean
+  (∧) = And
+  (∨) = Or
+  complement = Not
 
 -- (Logic :: (* → *) → * → *) creates a metalanguage as a function of the underlying latice and quantifiers
 data Logic l q =
@@ -122,12 +142,12 @@ type family HigherOrderLogic t (n :: Nat) where
   HigherOrderLogic n = Logic t (HigherOrder n)
 
 class Functor s ⇒ Sentence q s where
-  quantified :: s → Logic t q
+  quantified :: s → Logic l q
 
 instance (Sentence q s, Liftable q p) ⇒ Sentence p s where
-  quantified sentence = fmap lift (quantified sentence :: Logic t q)
+  quantified sentence = fmap lift (quantified sentence :: Logic l q)
 
-instance Sentence q (Logic t q) where
+instance Sentence q (Logic l q) where
   quantified = id
 
 instance Functor q ⇒ Sentence q q where

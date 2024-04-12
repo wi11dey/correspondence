@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 import Control.Monad
 import Control.Monad.Wrapper
@@ -16,14 +17,16 @@ import Data.Function
 import Data.Coerce
 import GHC.TypeLits
 
-data Relation = Relation
-  {
-    name :: String,
-    fixity :: Fixity,
-    precedence :: Int,
-    associativity :: Associativity,
-    arguments :: [Element]
+data Relation = Relation {
+  name :: String,
+  fixity :: Fixity,
+  precedence :: Int,
+  associativity :: Associativity,
+  arguments :: [Element]
   }
+
+instance Ord Relation where
+  compare = compare . name
 
 data Associativity = LeftAssociative | RightAssociative | NonAssociative
 
@@ -33,26 +36,25 @@ class Show r ⇒ RelationType r
   chain :: Wrapper Sentence Relation → r
 
 instance RelationType Relation where
-  chain = flip coerce \relation →
-    relation { arguments = reverse $ arguments relation }
+  chain = flip coerce \relation@(Relation { arguments }) →
+    relation { arguments = reverse arguments }
 
 instance RelationType Sentence where
   chain = Proposition . (chain :: _ → Relation)
 
 instance (Argument a, RelationType r) ⇒ RelationType (a → r) where
   chain current arg = chain do
-    relation ← current
+    relation@(Relation { previousArguments }) ← current
     element ← wrap arg
-    return relation { arguments = element:(arguments relation) }
+    return relation { arguments = element:previousArguments }
 
 relation :: RelationType r ⇒ String → r
-relation name = chain $ return $ Relation
-  {
-    name,
-    fixity = Prefix,
-    precedence = 10,
-    associativity = LeftAssociative,
-    arguments = []
+relation name = chain $ return $ Relation {
+  name,
+  fixity = Prefix,
+  precedence = 10,
+  associativity = LeftAssociative,
+  arguments = []
   }
 
 class Argument a where
@@ -90,13 +92,12 @@ data Element =
 (+) = infixFunction "+" LeftAssociative 3
 
 prefixRelation :: String → Arity 1
-prefixRelation name = withElement \element → Relation
-  {
-    name,
-    fixity = Prefix,
-    precedence = 0,
-    associativity = LeftAssociative,
-    arguments = [element]
+prefixRelation name = withElement \element → Relation {
+  name,
+  fixity = Prefix,
+  precedence = 0,
+  associativity = LeftAssociative,
+  arguments = [element]
   }
 infixRelation :: String → Associativity → Int → Arity 2
 infixFunction :: String → Associativity → Int → Arity 3
@@ -224,7 +225,8 @@ infixl 0 ¢
 
 ifThenElse condition thenBody elseResult = condition ⟹ thenBody ∧ ¬condition ⟹ elseBody
 
-class Axiom a
+class Axiom a where
+  sentence :: a → Sentence
 
 class Axiom a ⇒ Assumption (name :: Symbol) a where
   assume :: String → Sentence → a
@@ -232,20 +234,38 @@ class Axiom a ⇒ Assumption (name :: Symbol) a where
 instance (KnownSymbol name, Assumption name a) ⇒ IsLabel name (Sentence → a) where
   fromLabel = assume @name (symbolVal (Proxy :: Proxy name))
 
+newtype UniqueImage = UniqueImage Sentence
+
+class Axiom UniqueImage where
+  sentence = coerce
+
+uniqueƎ :: (Element → Sentence) → Sentence
+uniqueƎ formula = Ǝ\a → Ɐ\b → formula b ⟹ b ≡ a
+
+uniqueImage :: Arity n → UniqueImage
+uniqueImage relation =
+  UniqueImage relation.name
+  case natVal (Proxy :: Proxy n) of
+    0 → true
+    1 → true
+    2 → Ɐ\a → uniqueƎ\b → relation a ≡ b
+    _ → Ɐ\a → uniqueImage $ relation a
+
 peano =
   [
+    uniqueImage succ,
     #"every natural number has a successor"
-      $ Ɐ\x → Ǝ\y → succ x ≡ y,
+      $ Ɐ\a → Ǝ\b → succ a ≡ b,
     #"zero is not the successor of any natural number"
-      $ Ɐ\x → 0 ≠ succ x,
+      $ Ɐ\a → 0 ≠ succ a,
     #"two natural numbers are equal if their successors are equal"
-      $ Ɐ\x y → succ x ≡ succ y ⟹ x ≡ y,
+      $ Ɐ\a b → succ a ≡ succ b ⟹ a ≡ b,
     #"zero is the identity element of addition for natural numbers"
-      $ Ɐ\x → x + 0 ≡ x,
+      $ Ɐ\a → a + 0 ≡ a,
     #"the inductive definition of addition for natural numbers"
-      $ Ɐ\x y → x + succ y ≡ succ $ x + y,
+      $ Ɐ\a b → a + succ b ≡ succ $ a + b,
     #"zero is the annihilator element of multiplication for natural numbers"
-      $ Ɐ\x → x * 0 ≡ 0
+      $ Ɐ\a → a * 0 ≡ 0
   ]
 
 class Theorem (name :: Symbol) where
