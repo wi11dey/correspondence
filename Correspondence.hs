@@ -270,13 +270,13 @@ peano =
 
 class Theorem (name :: Symbol) where
   theory :: Axiom a ⇒ [a]
-  show = Sentence
-  proof = Proof a Sentence
+  show :: Sentence
+  proof :: Proof a
 
 instance Theorem "√2 is irrational" where
   theory = rationals
 
-  show = ¬Ǝ\x → rational x ∧ x^2 ≡ 2
+  statement = ¬Ǝ\x → rational x ∧ x^2 ≡ 2
   proof = do
     x ← supposeForContradiction $ #"√2 is rational"
       $ Ǝ\x → rational x ∧ x^2 ≡ 2
