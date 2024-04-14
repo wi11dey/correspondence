@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 type Multimap k v = Map k (Set v)
 
 data Generated =
@@ -30,15 +28,37 @@ models theory =
 -- A theory is defined by its generators (axioms and axiom schemata)
 type Theory q = ∀a. Axiom q a ⇒ [a]
 
-instance Theorem "generate models for first-order theory" where
-  statement = Ɐ\theory → (suchThat theory :: Theory FirstOrder) ⟹ Ǝ\models → (Ɐ\model → model ∈ models) ⟹ model ⊨ theory
+data ...
+
+instance Sentence a (...)
+
+instance _⇒ Theorem called "generate models for first-order theory" where
+  statement =
+    Ɐ\theory → (suchThat theory :: Theory FirstOrder)
+      ⟹ Ǝ\models → (Ɐ\model → model ∈ models)
+        ⟹ model ⊨ theory
   proof = do
     theory ← have Ǝ\theory → suchThat theory :: Theory FirstOrder
-    a
+    case syntax axiom of
+      
+    where
+      constantsOf
 
-main = proof @"generate models for first-order theory" ¢
+{-# LANGUAGE QuantifiedConstraints #-}
+class Is a
+class IsNot a
+
+-- Try to explicitly make an overlap so that trying to run a non-constructive proof fails type-check like described in https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/quantified_constraints.html#instance-lookup
+class (Is a ⇒ Constructive a) ⇒ Consistent a -- Assumption that is always there
+class (IsNot a ⇒ Constructive a) ⇒ LawOfExcludedMiddle a
+
+class Constructive a ⇒ Effective a where
+  run :: EffectiveType r ⇒ Proof a ⇒ r
+
+main = run (proof @"generate models for first-order theory") naturals
 
 
+
 -- These don't work:
 
 type family Runnable (* → Constraint) :: Type

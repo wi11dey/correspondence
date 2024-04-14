@@ -2,6 +2,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE DerivingFunctor #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 
 import Data.Coerce
 import Data.Void
@@ -113,15 +115,32 @@ class Variable v ⇒ Quantifier v q where
 
 type ZerothOrder = Void
 
+data FirstOrder s = ForAll s | Exists s
+
 data FirstOrder =
-  Ɐ :: Formula (Element 1) f ⇒ (Element 1 → f) → FirstOrder
-  Ǝ :: Formula (Element 1) f ⇒ (Element 1 → f) → FirstOrder
+  ForAll :: Formula (Element 1) f ⇒ (Element 1 → f) → FirstOrder
+  Exists :: Formula (Element 1) f ⇒ (Element 1 → f) → FirstOrder
+
+pattern Ɐ formula ← ForAll formula where
+  Ɐ formula = ForAll formula
+
+pattern Ǝ formula ← Exists formula where
+  Ǝ formula = Exists formula
 
 data HigherOrder (n :: Nat) where
   Lift1 :: (1 <= n) ⇒ FirstOrder → HigherOrder n
   Lift :: (m <= n) ⇒ HigherOrder m → HigherOrder n
-  Ɐ' :: Formula (Element n) f ⇒ (Element n → f) → HigherOrder n
-  Ǝ' :: Formula (Element n) f ⇒ (Element n → f) → HigherOrder n
+  ForAll' :: Formula (Element n) f ⇒ (Element n → f) → HigherOrder n
+  Exists' :: Formula (Element n) f ⇒ (Element n → f) → HigherOrder n
+
+order :: HigherOrder n → (Int, HigherOrder n)
+order = (natVal (Proxy :: Proxy n),)
+
+pattern Ɐ' n formula ← (order → (n, ForAll' formula)) where
+  Ɐ' formula = ForAll' formula
+
+pattern Ǝ' formula ← (order → (n, Exists' formula)) formula where
+  Ǝ' formula = Exists' formula
 
 class Liftable a b where
   lift :: a → b

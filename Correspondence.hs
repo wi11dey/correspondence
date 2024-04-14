@@ -9,7 +9,6 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE OverloadedRecordDot #-}
 
 import Control.Monad
 import Control.Monad.Wrapper
@@ -244,7 +243,7 @@ uniqueƎ formula = Ǝ\a → Ɐ\b → formula b ⟹ b ≡ a
 
 uniqueImage :: Arity n → UniqueImage
 uniqueImage relation =
-  UniqueImage relation.name
+  UniqueImage (name relation)
   case natVal (Proxy :: Proxy n) of
     0 → true
     1 → true
