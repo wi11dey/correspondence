@@ -269,7 +269,7 @@ peano =
 
 class Theorem (name :: Symbol) where
   theory :: Axiom a ⇒ [a]
-  show :: Sentence
+  statement :: Sentence
   proof :: Proof a
 
 instance Theorem "√2 is irrational" where
