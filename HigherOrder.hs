@@ -10,10 +10,15 @@ import Data.Void
 import Data.Proxy
 import Control.Monad
 
-class Functor l ⇒ Lattice t l where
-  fromTruth :: t → l a
-  (∧) :: a → a → l a
-  (∨) :: a → a → l a
+data Lattice v f =
+  Value v |
+  Join (Lattice v f) (Lattice v f) | 
+  Meet (Lattice v f) (Lattice v f)
+
+class Traversable l ⇒ Lattice v l where
+  value :: v → l a
+  (∧) :: l a → l a → l a
+  (∨) :: l a → l a → l a
 
 class Lattice t l ⇒ ImplicationLattice t l where
   implies :: a → a → l a
