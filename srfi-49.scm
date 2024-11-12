@@ -6,7 +6,7 @@
 ;; 
 ;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-(define-module (sugar))
+(define-module (srfi-49))
 
 (define-public group 'group)
 
@@ -31,7 +31,7 @@
       (readquote level port 'quote))
      ((eq? char #\,)
       (readquote level port 'unquote))
-     (t
+     (else
       (sugar-read-save port)))))
 
 (define (indentation>? indentation1 indentation2)
@@ -110,7 +110,7 @@
 	  (eq? char #\ht))
       (read-char port)
       (readblock level port))
-     (t
+     (else
       (let* ((first (readitem level port))
 	     (rest (readblock level port))
 	     (level (car rest))
@@ -142,7 +142,7 @@
     (cond
      ((eq? block '.)
       '())
-     (t
+     (else
       block))))
 
 (define-public (sugar-load filename)
@@ -151,7 +151,7 @@
       (if (eof-object? inp)
 	  #t
 	  (begin
-	    (eval inp)
+	    (eval inp (interaction-environment))
 	    (load port)))))
   (load (open-input-file filename)))
 
@@ -162,5 +162,3 @@
 (define-public (sugar-disable)
   (set! read sugar-read-save)
   (set! primitive-load sugar-load-save))
-
-(sugar-enable)
